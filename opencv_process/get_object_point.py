@@ -26,27 +26,35 @@ def team_division(frame):
         mask = cv2.inRange(opening_hsv, lower, upper)
 
         _, contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        for c in contours:
-            x, y, w, h = cv2.boundingRect(c)
-            center_x = x + (1 / 2) * w
-            center_y = y + h
 
-            area = w * h
-            if area < 350:
-                continue
-
-            # enemy team
-            if code == -1:
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-                enemy_team_point.append([center_x, center_y])
-            # our team
-            elif code == 1:
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
-                our_team_point.append([center_x, center_y])
-            # other team
-            elif code == 0:
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                other_point.append([center_x, center_y])
+        blob_radius_thresh = 3
+        
+        for cnt in contours:
+            try:
+                (x, y), radius = cv2.minEnclosingCircle(cnt)
+                centeroid = (int(x), int(y))
+                radius = int(radius)
+                if (radius > blob_radius_thresh):
+                    b = np.array([[x], [y]])
+    
+                area = w * h
+                if area < 350:
+                    continue
+    
+                # enemy team
+                if code == -1:
+                    cv2.circle(frame, centeroid, radius, (0, 0, 255), 2)
+                    enemy_team_point.append(np.round(b))
+                # our team
+                elif code == 1:
+                    cv2.circle(frame, centeroid, radius, (255, 0, 0), 2)
+                    our_team_point.append(np.round(b))
+                # other team
+                elif code == 0:
+                    cv2.circle(frame, centeroid, radius, (0, 255, 0), 2)
+                    other_point.append(np.round(b))
+                except ZeroDivisionError:
+                    pass
 
     return our_team_point, enemy_team_point, other_point
 

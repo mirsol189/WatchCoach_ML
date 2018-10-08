@@ -4,6 +4,7 @@ from raspberrypi_process import get_stadium_point as gsp # Get stadium's points
 from raspberrypi_process import draw_canvas as dp # Draw camvas top view
 from raspberrypi_process import get_object_point as gop # Get object's points
 from raspberrypi_process import transfer_view as gtv # Transfer object's points
+from tracker import Tracker
 
 frame_success = False
 background_img = cv2.imread('./background.png')
@@ -14,6 +15,8 @@ trans_matrix, trans_w, trans_h = None, None, None
 
 our_defence_flag = False
 enemy_defence_flag = False
+
+tracker = Tracker(160, 30, 5, 100)
 
 if cap.isOpened():
     while True:
@@ -52,13 +55,58 @@ if cap.isOpened():
             t1 = time.time()
 
             find_frame, our_team_point, enemy_team_point, other_point = gop.main(frame)
+            
+            # If centroids are detected then track them
+            if(len(our_team_point)>0):
+
+                KF_our_team=[]
+
+                # Track object using Kalman Filter
+                tracker.Update(our_team_point)
+
+                for i in range(len(tracker.tracks)):
+                    if (len(tracker.tracks[i].trace) > 1):
+                        for j in range(len(tracker.tracks[i].trace)-1):
+                            x2 = tracker.tracks[i].trace[j+1][0][0]
+                            y2 = tracker.tracks[i].trace[j+1][1][0]
+                            KF_our_team.append([x2,y2])
+            
+            # If centroids are detected then track them
+            if(len(enemy_team_point)>0):
+
+                KF_enemy_team=[]
+
+                # Track object using Kalman Filter
+                tracker.Update(enemy_team_point)
+
+                for i in range(len(tracker.tracks)):
+                    if (len(tracker.tracks[i].trace) > 1):
+                        for j in range(len(tracker.tracks[i].trace)-1):
+                            x2 = tracker.tracks[i].trace[j+1][0][0]
+                            y2 = tracker.tracks[i].trace[j+1][1][0]
+                            KF_enemy_team.append([x2,y2])
+
+            # If centroids are detected then track them
+            if(len(other_team_point)>0):
+
+                KF_other_team=[]
+
+                # Track object using Kalman Filter
+                tracker.Update(other_team_point)
+
+                for i in range(len(tracker.tracks)):
+                    if (len(tracker.tracks[i].trace) > 1):
+                        for j in range(len(tracker.tracks[i].trace)-1):
+                            x2 = tracker.tracks[i].trace[j+1][0][0]
+                            y2 = tracker.tracks[i].trace[j+1][1][0]
+                            KF_other_team.append([x2,y2])
 
             t2 = time.time()
             print(t2 - t1)
             # Get trans object's points
             dst, trans_our_team_point, trans_enemy_team_point, trans_other_point = \
-                gtv.trans_object_point(find_frame, our_team_point, enemy_team_point,
-                                       other_point, trans_matrix, trans_w, trans_h)
+                gtv.trans_object_point(find_frame, KF_our_team, KF_enemy_team,
+                                       KF_other_team, trans_matrix, trans_w, trans_h)
 
             key = cv2.waitKey(1) & 0xFF
 
